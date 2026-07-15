@@ -1,0 +1,42 @@
+name: Call Cruise Tech Logs API & Process
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  call-api:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Fetch and Process API Data
+        env:
+          CRUISE_TECH_API_TOKEN: ${{ secrets.CRUISE_TECH_API_TOKEN }}
+        run: node scripts/fetch-and-process.js
+      
+      - name: Commit & Push Results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ reports/
+          git commit -m "Update API responses - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git push
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-responses
+          path: |
+            data/
+            reports/
+          retention-days: 30
